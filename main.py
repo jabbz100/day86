@@ -4,31 +4,39 @@ from PIL import Image, ImageTk
 import random
 import time
 
-
-def load_words():
-    with open("./data/google-10000-english-usa-no-swears-long.txt", "r") as file:
-        words = file.read().splitlines()
-    return words
-
-
-def get_random_words(num_lines=3, words_per_line=3):
-    words = load_words()
-    selected_words = random.sample(words, num_lines * words_per_line)
-    return [' '.join(selected_words[i:i+words_per_line]) for i in range(0, len(selected_words), words_per_line)]
-
-
-def update_words():
-    new_words = get_random_words()
-    formatted_text = '\n'.join(new_words)
-    game_label.config(text=formatted_text)
-    return new_words
+# Functionality for counting WPM
+start_time = None
+char_count = 0
 
 
 def restart_typing():
-    pass
+    global start_time
+    global char_count
+    wpm_label.config(text=f"Words per minute: {0}")
+    start_time = None
+    char_count = 0
+    entry.delete(0, tk.END)
 
 
-# TODO 1. Setup the root window
+def key_press(event):
+    global start_time
+    global char_count
+    if start_time is None:
+        start_time = time.time()
+    if event.char.isprintable():
+        char_count += 1
+
+
+def update_speed():
+    if start_time:
+        elapsed_time = (time.time() - start_time) / 60  # Minutes
+        wpm = int(char_count / 5 / elapsed_time) if elapsed_time > 0 else 0
+        wpm_label.config(text=f"Words per minute: {wpm}")
+
+    root.after(100, update_speed)
+
+
+# Window setup
 root = tk.Tk()
 root.title("Super Typer")
 root.geometry("1280x800")
@@ -52,15 +60,18 @@ tk.Label(root,
          bg=default_bg,
          fg="white",).grid(row=1, pady=10)
 
-# Todo 3. Some Style
+restart_button = ttk.Button(root, text="Restart", style="TButton", command=restart_typing)
+restart_button.grid(row=3)
+
+# Styling for the user interface objects
 style = ttk.Style()
 style.theme_use("clam")
 style.configure(
     "TEntry",
-    font=("Helvetica", 18),  # Set a modern font and size
-    padding=5,               # Add padding for better aesthetics
-    borderwidth=2,           # Slightly thicker border
-    relief="flat",           # Flat appearance
+    font=("Helvetica", 18),
+    padding=5,
+    borderwidth=2,
+    relief="flat",
 )
 style.map(
     "TEntry",
@@ -88,22 +99,40 @@ style.configure(
     darkcolor="#1e1e1e"    # Bottom/right border color
 )
 
-restart_button = ttk.Button(root, text="Restart", style="TButton", command=restart_typing)
-restart_button.grid(row=3)
-
-# TODO 2. Setup the game box
+# Layout of the game box
 game_box = ttk.Frame(root, style="Fancy.TFrame")
 game_box.grid(row=2, pady=30)
 
 wpm_label = tk.Label(game_box, text=f"Words per minute: {0}", bg="#282c34", fg="white", font=game_font)
 wpm_label.config(font=("Comic Sans MS", 30))
-wpm_label.grid(row=0, padx=150, pady=10)
+wpm_label.grid(row=0, pady=10)
 
 game_label = tk.Label(game_box, text="", bg="#282c34", fg="white", font=game_font)
 game_label.grid(row=1, pady=10)
 
 entry = ttk.Entry(game_box, style="TEntry", font=game_font)
-entry.grid(row=2, pady=20)
+entry.grid(row=2, pady=20, padx=180)
+
+
+# Functionality for WPM counter and word generator.
+def load_words():
+    with open("./data/google-10000-english-usa-no-swears-long.txt", "r") as file:
+        words = file.read().splitlines()
+    return words
+
+
+def get_random_words(num_lines=3, words_per_line=3):
+    words = load_words()
+    selected_words = random.sample(words, num_lines * words_per_line)
+    return [' '.join(selected_words[i:i+words_per_line]) for i in range(0, len(selected_words), words_per_line)]
+
+
+def update_words():
+    new_words = get_random_words()
+    formatted_text = '\n'.join(new_words)
+    game_label.config(text=formatted_text)
+    return new_words
+
 
 random_words = update_words()
 
@@ -112,7 +141,7 @@ def check_input(event=None):
     global random_words
     user_input = entry.get()
     if user_input in random_words:
-        new_batch = get_random_words(num_lines=1, words_per_line=3)[0]
+        new_batch = get_random_words(num_lines=1)[0]
         random_words.remove(user_input)
         random_words.append(new_batch)
         formatted_text = '\n'.join(random_words)
@@ -120,6 +149,13 @@ def check_input(event=None):
         entry.delete(0, tk.END)
 
 
-entry.bind("<KeyRelease>", check_input)
+def combined_handler(event):
+    check_input(event)
+    key_press(event)
+
+
+entry.bind("<KeyRelease>", combined_handler)
+
+update_speed()
 
 root.mainloop()
