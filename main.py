@@ -128,21 +128,9 @@ def update_words():
 random_words = update_words()
 
 
-def key_press(event):
-    global start_time
-    global char_count
-    if start_time is None:
-        start_time = time.time()
-
-    if event.char.isprintable() and event.keysym != "BackSpace":
-        user_input = entry.get()
-        correct_text = " ".join(random_words)
-        if correct_text.startswith(user_input):
-            char_count += 1
-
-
 def check_input(event):
     global random_words
+
     user_input = entry.get()
     if user_input in random_words:
         new_batch = get_random_words(num_lines=1)[0]
@@ -151,6 +139,20 @@ def check_input(event):
         formatted_text = '\n'.join(random_words)
         typing_panel_label.config(text=formatted_text)
         entry.delete(0, tk.END)
+
+
+def key_press(event):
+    global start_time
+    global char_count
+
+    if start_time is None:
+        start_time = time.time()
+
+    if event.char.isprintable() and event.keysym != "BackSpace":
+        user_input = entry.get()
+        correct_text = " ".join(random_words)
+        if correct_text.startswith(user_input):
+            char_count += 1
 
 
 def combined_handler(event):
