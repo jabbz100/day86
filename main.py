@@ -4,12 +4,13 @@ from PIL import Image, ImageTk
 import random
 import time
 
-# Functionality for counting WPM
+
 start_time = None
 char_count = 0
 
 
-def restart_typing():
+def restart_window():
+    """Reset the WPM score"""
     global start_time
     global char_count
     wpm_label.config(text=f"Words per minute: {0}")
@@ -18,25 +19,16 @@ def restart_typing():
     entry.delete(0, tk.END)
 
 
-def key_press(event):
-    global start_time
-    global char_count
-    if start_time is None:
-        start_time = time.time()
-    if event.char.isprintable():
-        char_count += 1
-
-
-def update_speed():
+def update_window():
     if start_time:
         elapsed_time = (time.time() - start_time) / 60  # Minutes
         wpm = int(char_count / 5 / elapsed_time) if elapsed_time > 0 else 0
         wpm_label.config(text=f"Words per minute: {wpm}")
 
-    root.after(100, update_speed)
+    root.after(100, update_window)
 
 
-# Window setup
+# App Setup
 root = tk.Tk()
 root.title("Super Typer")
 root.geometry("1280x800")
@@ -60,10 +52,10 @@ tk.Label(root,
          bg=default_bg,
          fg="white",).grid(row=1, pady=10)
 
-restart_button = ttk.Button(root, text="Restart", style="TButton", command=restart_typing)
+restart_button = ttk.Button(root, text="Restart", style="TButton", command=restart_window)
 restart_button.grid(row=3)
 
-# Styling for the user interface objects
+# User Interface Styling
 style = ttk.Style()
 style.theme_use("clam")
 style.configure(
@@ -75,9 +67,9 @@ style.configure(
 )
 style.map(
     "TEntry",
-    background=[("focus", "white")],  # White background on focus
-    fieldbackground=[("!focus", "#F0F0F0")],  # Light gray when not focused
-    bordercolor=[("focus", "#0078D7")],  # Highlighted border on focus
+    background=[("focus", "white")],
+    fieldbackground=[("!focus", "#F0F0F0")],
+    bordercolor=[("focus", "#0078D7")],
 )
 style.configure(
     "TButton",
@@ -89,32 +81,31 @@ style.configure(
 )
 style.map(
     "TButton",
-    background=[("active", "#67b")],  # Button hover color
-    foreground=[("active", "#eaeaea")],  # Hover text color
+    background=[("active", "#67b")],
+    foreground=[("active", "#eaeaea")],
 )
 style.configure(
     "Fancy.TFrame",
-    background="#282c34",  # Frame background color
-    lightcolor="#5a9",     # Top/left border color for a subtle 3D effect
-    darkcolor="#1e1e1e"    # Bottom/right border color
+    background="#282c34",
+    lightcolor="#5a9",
+    darkcolor="#1e1e1e"
 )
 
-# Layout of the game box
-game_box = ttk.Frame(root, style="Fancy.TFrame")
-game_box.grid(row=2, pady=30)
+# Typing Panel Layout
+typing_panel = ttk.Frame(root, style="Fancy.TFrame")
+typing_panel.grid(row=2, pady=30)
 
-wpm_label = tk.Label(game_box, text=f"Words per minute: {0}", bg="#282c34", fg="white", font=game_font)
+wpm_label = tk.Label(typing_panel, text=f"Words per minute: {0}", bg="#282c34", fg="white", font=game_font)
 wpm_label.config(font=("Comic Sans MS", 30))
 wpm_label.grid(row=0, pady=10)
 
-game_label = tk.Label(game_box, text="", bg="#282c34", fg="white", font=game_font)
-game_label.grid(row=1, pady=10)
+typing_panel_label = tk.Label(typing_panel, text="", bg="#282c34", fg="white", font=game_font)
+typing_panel_label.grid(row=1, pady=10)
 
-entry = ttk.Entry(game_box, style="TEntry", font=game_font)
+entry = ttk.Entry(typing_panel, style="TEntry", font=game_font)
 entry.grid(row=2, pady=20, padx=180)
 
 
-# Functionality for WPM counter and word generator.
 def load_words():
     with open("./data/google-10000-english-usa-no-swears-long.txt", "r") as file:
         words = file.read().splitlines()
@@ -130,14 +121,27 @@ def get_random_words(num_lines=3, words_per_line=3):
 def update_words():
     new_words = get_random_words()
     formatted_text = '\n'.join(new_words)
-    game_label.config(text=formatted_text)
+    typing_panel_label.config(text=formatted_text)
     return new_words
 
 
 random_words = update_words()
 
 
-def check_input(event=None):
+def key_press(event):
+    global start_time
+    global char_count
+    if start_time is None:
+        start_time = time.time()
+
+    if event.char.isprintable() and event.keysym != "BackSpace":
+        user_input = entry.get()
+        correct_text = " ".join(random_words)
+        if correct_text.startswith(user_input):
+            char_count += 1
+
+
+def check_input(event):
     global random_words
     user_input = entry.get()
     if user_input in random_words:
@@ -145,7 +149,7 @@ def check_input(event=None):
         random_words.remove(user_input)
         random_words.append(new_batch)
         formatted_text = '\n'.join(random_words)
-        game_label.config(text=formatted_text)
+        typing_panel_label.config(text=formatted_text)
         entry.delete(0, tk.END)
 
 
@@ -156,6 +160,6 @@ def combined_handler(event):
 
 entry.bind("<KeyRelease>", combined_handler)
 
-update_speed()
+update_window()
 
 root.mainloop()
