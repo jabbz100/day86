@@ -8,11 +8,11 @@ import time
 start_time = None
 char_count = 0
 timer = 60
-timer_after_id = None
+timer_after_id = ""
 
 try:
-    with open("highscore.txt", "r") as file:
-        highest_wpm = int(file.readline().strip())
+    with open("highscore.txt", "r") as highscore:
+        highest_wpm = int(highscore.readline().strip())
 except (ValueError, FileNotFoundError):
     highest_wpm = 0
 
@@ -53,8 +53,8 @@ def record_highscore():
             wpm = int(char_count / 5 / elapsed_time)
             if wpm > highest_wpm:
                 highest_wpm = wpm
-                with open("highscore.txt", "w") as file:
-                    file.write(str(highest_wpm))
+                with open("highscore.txt", "w") as score:
+                    score.write(str(highest_wpm))
                 highest_wpm_label.config(text=f"Highest WPM: {highest_wpm}")
 
     root.after(60000, record_highscore)  # Check again after another minute
