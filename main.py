@@ -7,19 +7,35 @@ import time
 
 start_time = None
 char_count = 0
+timer = 60
+timer_after_id = None
+
+try:
+    with open("highscore.txt", "r") as file:
+        highest_wpm = int(file.readline().strip())
+except (ValueError, FileNotFoundError):
+    highest_wpm = 0
 
 
 def restart_window():
-    """Reset the WPM score"""
-    global start_time
-    global char_count
-    wpm_label.config(text=f"Words per minute: {0}")
+    """Reset everything to initial state"""
+    global start_time, char_count, timer, highest_wpm, random_words
+
     start_time = None
     char_count = 0
+    timer = 60
+
+    wpm_label.config(text=f"Words per minute: {0}")
+    timer_label.config(text=f"Time left: {timer}")
     entry.delete(0, tk.END)
+
+    random_words = update_words()
+
+    root.after_cancel(timer_after_id)  # Cancel old timer loop
 
 
 def update_window():
+    global highest_wpm
     if start_time:
         elapsed_time = (time.time() - start_time) / 60  # Minutes
         wpm = int(char_count / 5 / elapsed_time) if elapsed_time > 0 else 0
@@ -28,10 +44,34 @@ def update_window():
     root.after(100, update_window)
 
 
+def record_highscore():
+    global highest_wpm
+
+    if start_time:
+        elapsed_time = (time.time() - start_time) / 60
+        if elapsed_time >= 1:  # Only record after 1 minute
+            wpm = int(char_count / 5 / elapsed_time)
+            if wpm > highest_wpm:
+                highest_wpm = wpm
+                with open("highscore.txt", "w") as file:
+                    file.write(str(highest_wpm))
+                highest_wpm_label.config(text=f"Highest WPM: {highest_wpm}")
+
+    root.after(60000, record_highscore)  # Check again after another minute
+
+
+def update_timer():
+    global timer, timer_after_id
+    if timer > 0:
+        timer -= 1
+        timer_label.config(text=f"Time left: {timer}")
+        timer_after_id = root.after(1000, update_timer)
+
+
 # App Setup
 root = tk.Tk()
 root.title("Super Typer")
-root.geometry("1280x800")
+root.geometry("1280x840")
 root.config(bg="#6E8E59")
 
 default_bg = root.cget('bg')
@@ -42,18 +82,36 @@ im_logo = Image.open("data/logo.png")
 img_logo = ImageTk.PhotoImage(image=im_logo)
 
 root.columnconfigure(0, weight=1)
+root.columnconfigure(1, weight=1)
+
 
 logo_label = tk.Label(root, image=img_logo, anchor="center", bg=default_bg)
-logo_label.grid(row=0)
+logo_label.grid(row=0, columnspan=2)
 
 tk.Label(root,
          text="Let's see how much of a super typer you are 😊!",
          font=game_font,
          bg=default_bg,
-         fg="white",).grid(row=1, pady=10)
+         fg="white",).grid(row=1, columnspan=2)
+
+highest_wpm_label = tk.Label(root,
+                             text=f"Highscore: {highest_wpm}",
+                             font=game_font,
+                             bg=default_bg,
+                             fg="white"
+                             )
+highest_wpm_label.grid(row=2, column=0, pady=20)
+
+timer_label = tk.Label(root,
+                       text=f"Time left: {timer}",
+                       font=game_font,
+                       bg=default_bg,
+                       fg="white"
+                       )
+timer_label.grid(row=2, column=1)
 
 restart_button = ttk.Button(root, text="Restart", style="TButton", command=restart_window)
-restart_button.grid(row=3)
+restart_button.grid(row=4, pady=15, columnspan=2)
 
 # User Interface Styling
 style = ttk.Style()
@@ -93,7 +151,7 @@ style.configure(
 
 # Typing Panel Layout
 typing_panel = ttk.Frame(root, style="Fancy.TFrame")
-typing_panel.grid(row=2, pady=30)
+typing_panel.grid(row=3, pady=10, columnspan=2)
 
 wpm_label = tk.Label(typing_panel, text=f"Words per minute: {0}", bg="#282c34", fg="white", font=game_font)
 wpm_label.config(font=("Comic Sans MS", 30))
@@ -142,11 +200,13 @@ def check_input(event):
 
 
 def key_press(event):
-    global start_time
-    global char_count
+    global start_time, char_count, timer
 
     if start_time is None:
         start_time = time.time()
+        timer = 60
+        update_timer()
+        root.after(60000, record_highscore)
 
     if event.char.isprintable() and event.keysym != "BackSpace":
         user_input = entry.get()
